@@ -1,0 +1,130 @@
+html
+    head
+        title POTA CA-ON Never Activated Sites
+        script(type='text/javascript', src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js')
+        link(rel='stylesheet', href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css')
+
+        style.
+            #info {
+                display: table;
+                position: relative;
+                margin: 0px auto;
+                word-wrap: anywhere;
+                white-space: pre-wrap;
+                padding: 10px;
+                border: none;
+                border-radius: 3px;
+                font-size: 12px;
+                text-align: center;
+                color: #222;
+                background: #fff;
+            }
+
+    body
+        div(style="text-align:center")
+            img(src="https://www.rac.ca/wp-content/uploads/2023/05/POTA_logo-1024x1001.png" width="200px")
+            h1 CA-ON Never Activated Parks
+            p Last updated by api.pota.app on 07 Jul 23.
+        div(id='map' style='width: 100%; height: 100%;')
+        <!-- div(id='info' style='width: 500px; height: 600px;') -->
+
+
+    script.
+        const locations = [];
+        const places = !{JSON.stringify(places)};
+        load_map();
+        /*
+            This code populates the MapBox
+         */
+        function populate_map(item, index, arr){
+            const place = {
+                'type': 'Feature',
+                'properties': {
+                    'description':
+                        '<a target="_blank" href="https://pota.app/#/park/'+item.reference+'"><strong>'+item.name+' - '+item.reference+'</strong></a><p>'+item.parkComments+'</p>',
+                    'icon': 'marker'
+                },
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [item.longitude, item.latitude]
+                }
+            };
+            locations.push(place);
+
+        }
+        mapboxgl.accessToken = 'pk.eyJ1Ijoid21hY2lubmlzMSIsImEiOiJjbDM4cWh0dmQwMmZrM2twaTN6N2UwaXo1In0.oSjeJnHSRfN-ygqX3XAGXg';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-79.481247, 44],
+            zoom: 4
+        });
+
+        async function load_map(){
+            await places.forEach(populate_map);
+            map.on('load', () => {
+
+                map.addSource('places', {
+                    // This GeoJSON contains features that include an "icon"
+                    // property. The value of the "icon" property corresponds
+                    // to an image in the Mapbox Streets style's sprite.
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'FeatureCollection',
+                        'features': locations
+                    }
+                });
+                console.log('loaded');
+                // Add a layer showing the places.
+                map.addLayer({
+                    'id': 'places',
+                    'type': 'symbol',
+                    'source': 'places',
+                    'layout': {
+                        'icon-image': ['get', 'icon'],
+                        'icon-allow-overlap': true
+                    }
+                });
+                map.on('mousemove', (e) => {
+                    document.getElementById('info').innerHTML =
+                        // `e.point` is the x, y coordinates of the `mousemove` event
+                        // relative to the top-left corner of the map.
+                        JSON.stringify(e.point) +
+                        '<br />' +
+                        // `e.lngLat` is the longitude, latitude geographical position of the event.
+                        JSON.stringify(e.lngLat.wrap());
+                });
+
+                // When a click event occurs on a feature in the places layer, open a popup at the
+                // location of the feature, with description HTML from its properties.
+                map.on('click', 'places', (e) => {
+                    // Copy coordinates array.
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const description = e.features[0].properties.description;
+
+                    // Ensure that if the map is zoomed out such that multiple
+                    // copies of the feature are visible, the popup appears
+                    // over the copy being pointed to.
+                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                    }
+
+                    new mapboxgl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(description)
+                        .addTo(map);
+                });
+
+                // Change the cursor to a pointer when the mouse is over the places layer.
+                map.on('mouseenter', 'places', () => {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+
+                // Change it back to a pointer when it leaves.
+                map.on('mouseleave', 'places', () => {
+                    map.getCanvas().style.cursor = '';
+                });
+            });
+        }
+
