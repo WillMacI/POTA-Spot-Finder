@@ -4,6 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "build": "babel app.js -d lib",
     "start": "nodemon app.js"
   },
   "repository": {
@@ -22,6 +23,8 @@
     "pug": "^3.0.2"
   },
   "devDependencies": {
+    "@babel/cli": "^7.22.6",
+    "@babel/core": "^7.22.8",
     "nodemon": "^2.0.22"
   }
 }
